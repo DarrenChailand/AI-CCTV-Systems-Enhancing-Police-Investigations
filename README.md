@@ -76,8 +76,6 @@ The repository contains the prototype code and trained checkpoints, but it does 
 - evaluation metrics, baselines, uncertainty, and failure cases;
 - hardware and software versions used in the experiments.
 
-See [`docs/RESEARCH.md`](docs/RESEARCH.md) for a ready-to-fill research summary.
-
 ## Responsible-use limitations
 
 Face matching and expression classification can be wrong, especially under poor lighting, occlusion, low resolution, pose changes, or domain shift. Expression labels are not reliable evidence of intent, truthfulness, guilt, or mental state. Outputs should be treated only as uncertain search aids and must be reviewed against the original footage.
