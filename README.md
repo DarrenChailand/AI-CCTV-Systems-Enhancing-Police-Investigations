@@ -4,6 +4,7 @@ Research prototype for turning CCTV footage into structured investigative leads.
 
 > [!IMPORTANT]
 > This is an award-winning research prototype, not a production policing system. It must not be used to identify, accuse, or make decisions about people without lawful authority, human review, and independent verification.
+> Research Paper Link : https://drive.google.com/file/d/1bVMPj6I-eit4_aBfkuu2v3hJlhaA0TQa/view?usp=sharing
 
 ## Recognition
 
