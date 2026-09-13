@@ -1,16 +1,21 @@
 from ultralytics import YOLO
 import cv2, queue, threading, time, os, datetime, face_recognition, math, numpy as np, mysql.connector, base64, io
-from sort import Sort
+from .sort import Sort
 from PIL import Image
-import tampilan_evidence
+from dotenv import load_dotenv
+from . import evidence
 
-def tampilan_evidence_1(x,y,z,m):
-    tampilan_evidence.save_cuplikan(x,y,z,m)
+load_dotenv()
+
+def generate_evidence_clip(x,y,z,m):
+    evidence.save_cuplikan(x,y,z,m)
 
 mydb = mysql.connector.connect(
-  host="localhost",
-  user="root",
-  database="database_investigator"
+  host=os.getenv("DB_HOST", "localhost"),
+  port=int(os.getenv("DB_PORT", "3306")),
+  user=os.getenv("DB_USER", "root"),
+  password=os.getenv("DB_PASSWORD", ""),
+  database=os.getenv("DB_NAME", "database_investigator")
 )
 
 mycursor = mydb.cursor()
@@ -18,7 +23,7 @@ mycursor = mydb.cursor()
 dtp_long = 106.005913
 dtp_lat = -6.035569
 encodeListKnown = 0
-model = YOLO('AI_Model/Train_4.pt')
+model = YOLO('models/checkpoints/train_4.pt')
 tracker = Sort(max_age=30, min_hits=0, iou_threshold=0.2)
 face_recognation_data = [] 
 sus_movement_data = [] 
@@ -119,7 +124,9 @@ total_frame_koordinat = []
 framegone = 0
 list_unkown_terdetek = []
 bool_checked_id = 0
-cap = cv2.VideoCapture(2)
+camera_source = os.getenv("CAMERA_SOURCE", "2")
+camera_source = int(camera_source) if camera_source.isdigit() else camera_source
+cap = cv2.VideoCapture(camera_source)
 frame_width = int(cap.get(3))
 frame_height = int(cap.get(4))
 size = (frame_width, frame_height)
@@ -177,7 +184,10 @@ while True:
                 if not name == "Unknown" and not name =="Unknown_done":
                     list_name.append([Id, name, dtp_long, dtp_long, datetime.datetime.now(), 0, 0]) 
                     if IddalamPerekaman == -1:
-                        file_name = "File/Video_Data/" + name + "_" + str(datetime.datetime.now()) +".avi"
+                        os.makedirs("outputs/raw", exist_ok=True)
+                        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                        safe_name = "".join(c for c in name if c.isalnum() or c in "-_ ").strip()
+                        file_name = os.path.join("outputs", "raw", f"{safe_name}_{timestamp}.avi")
                         nama_orang_target = name
                         resultx_raw = cv2.VideoWriter(str(file_name), cv2.VideoWriter_fourcc(*'MJPG'), 5, size)
                         IddalamPerekaman = Id
@@ -216,11 +226,12 @@ while True:
                     mycursor.execute(sql, val)
 
                     mydb.commit()
-                    with open("File/data_koordinat.txt", 'w') as file:
+                    os.makedirs("data", exist_ok=True)
+                    with open("data/coordinates.txt", "w", encoding="utf-8") as file:
                         for data in total_frame_koordinat:
                             file.write(str(data) + ', \n')
                         print(f'Data saved successfully.')
-                    thread1 = threading.Thread(target=tampilan_evidence_1, args=(mycursor.lastrowid,file_name,nama_orang_target,index1,))
+                    thread1 = threading.Thread(target=generate_evidence_clip, args=(mycursor.lastrowid,file_name,nama_orang_target,index1,))
                     thread1.start()
                     
             IddalamPerekaman = -1

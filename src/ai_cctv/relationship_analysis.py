@@ -4,13 +4,16 @@ import face_recognition
 import cv2
 import numpy as np
 import math
-from sort import Sort
+from .sort import Sort
 import datetime
 import mysql.connector, base64, io
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 encodeListKnown = 0
 
-def FaceRecog1(img, encodeListKnown, className):
+def FaceRecog1(img, encodeListKnown, className, face_cascade):
     imgS = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     faces=face_cascade.detectMultiScale(imgS,1.3,5)
     breakorno = 0
@@ -55,11 +58,9 @@ def BuildEncodings(images):
         pass
 
     return encodelist
-def main():
+def load_known_faces(mycursor):
     global images
     global className
-    global path_unk
-    global myList
     images = []
     className = []
     mycursor.execute("SELECT * FROM target_koneksi")
@@ -127,20 +128,22 @@ def Pencarian_Muka_ID(image, face_cascade):
 
 def main(dtp_id, filname, index1):
     mydb = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    database="database_investigator"
+    host=os.getenv("DB_HOST", "localhost"),
+    port=int(os.getenv("DB_PORT", "3306")),
+    user=os.getenv("DB_USER", "root"),
+    password=os.getenv("DB_PASSWORD", ""),
+    database=os.getenv("DB_NAME", "database_investigator")
     )
 
     mycursor = mydb.cursor()
 
     tracker = Sort(max_age=30, min_hits=0, iou_threshold=0.1)
-    model = YOLO('AI_Model/Train_4.pt')
+    model = YOLO('models/checkpoints/train_4.pt')
     cap = cv2.VideoCapture(filname)
     haar_file = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
     face_cascade=cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
 
-    with open("File/data_koordinat.txt", 'r') as file:
+    with open("data/coordinates.txt", "r", encoding="utf-8") as file:
             file_contents = file.read()
     koordinat_data = eval("[" + file_contents + "]")
 
@@ -191,16 +194,18 @@ def main(dtp_id, filname, index1):
         if saved_face is not None:
             Muka_Koneksi.append(saved_face)
 
-    main()
+    load_known_faces(mycursor)
 
     Id_Koneksi_Target = []
     print(Muka_Koneksi)
     for Muka_Koneksi_Event in Muka_Koneksi:
-        name = FaceRecog1(Muka_Koneksi_Event, encodeListKnown, className)
+        name = FaceRecog1(Muka_Koneksi_Event, encodeListKnown, className, face_cascade)
         if name == "Unknown_done":
             cv2.imshow("Muka Koneksi " + str(name), Muka_Koneksi_Event)
             cv2.waitKey(0)
-            file_name = "File/" + str(datetime.datetime.now()) + ".jpg"
+            os.makedirs("outputs/faces", exist_ok=True)
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            file_name = os.path.join("outputs", "faces", f"{timestamp}.jpg")
             cv2.imwrite(str(file_name), Muka_Koneksi_Event)
             with open(str(file_name), 'rb') as file:
                 my_string = base64.b64encode(file.read())
@@ -228,5 +233,3 @@ def main(dtp_id, filname, index1):
         val = (index1, dtp_id, x)
         mycursor.execute(sql, val)
         mydb.commit()
-
-    

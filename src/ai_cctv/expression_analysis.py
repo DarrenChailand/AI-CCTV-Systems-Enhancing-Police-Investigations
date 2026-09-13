@@ -1,11 +1,22 @@
-from deepface import DeepFace
-import cv2, mysql.connector
-import analisa_jaringan
+import ast
+import os
+import threading
 
-def analisa_jaringan_1(x,y,m):
-    analisa_jaringan.main(x,y,m)
+import cv2
+import mysql.connector
+from deepface import DeepFace
+from dotenv import load_dotenv
+
+from . import relationship_analysis
+
+load_dotenv()
+
+def analyze_relationships(x,y,m):
+    relationship_analysis.main(x,y,m)
 
 def statistika_emotion(emotions_list):
+    if not emotions_list:
+        return "No face expressions detected"
     emotion_counts = {}
     total_emotions = len(emotions_list)
     for emotion in emotions_list:
@@ -24,18 +35,20 @@ def statistika_emotion(emotions_list):
 
 def main(dtp_id, filname, index1):
     mydb = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    database="database_investigator"
+    host=os.getenv("DB_HOST", "localhost"),
+    port=int(os.getenv("DB_PORT", "3306")),
+    user=os.getenv("DB_USER", "root"),
+    password=os.getenv("DB_PASSWORD", ""),
+    database=os.getenv("DB_NAME", "database_investigator")
     )
 
     mycursor = mydb.cursor()
 
-    with open("/Users/darrenchailand/Documents/VSCode/OPSI_FINAL_2023/File/data_koordinat.txt", 'r') as file:
+    with open("data/coordinates.txt", "r", encoding="utf-8") as file:
             file_contents = file.read()
-    koordinat_data = eval("[" + file_contents + "]")
+    koordinat_data = ast.literal_eval("[" + file_contents + "]")
 
-    cap = cv2.VideoCapture("File/Video_Data/DARREN CHAILAND_2023-09-29 22:02:43.010620.avi")
+    cap = cv2.VideoCapture(filname)
     haar_file = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
 
     face_cascade=cv2.CascadeClassifier(haar_file)
@@ -51,6 +64,8 @@ def main(dtp_id, filname, index1):
             mycursor.execute(sql, val)
 
             mydb.commit()
+            break
+        if not s:
             break
         img = img[int(koordinat_data[x][1]) : int(koordinat_data[x][3]), int(koordinat_data[x][0]) : int(koordinat_data[x][2])]
         print(x, xMax-1)
@@ -68,6 +83,10 @@ def main(dtp_id, filname, index1):
                 pass
         cv2.imshow("img", img)
         cv2.waitKey(1)
-        thread1 = threading.Thread(target=analisa_jaringan_1, args=(dtp_id,link,index1,))
-        thread1.start()
-
+    cap.release()
+    cv2.destroyAllWindows()
+    thread1 = threading.Thread(
+        target=analyze_relationships,
+        args=(dtp_id, filname, index1),
+    )
+    thread1.start()

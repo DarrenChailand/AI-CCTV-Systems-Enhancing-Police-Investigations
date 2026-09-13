@@ -1,21 +1,30 @@
+import ast
+import os
+import threading
+from pathlib import Path
+
 import cv2
 import moviepy.editor as mvp
-import analisa_ekspresi
-def analisa_ekspresi_1(x,y,m):
-    analisa_ekspresi.main(x,y,m)
+from . import expression_analysis
+def analyze_expressions(x,y,m):
+    expression_analysis.main(x,y,m)
 
-dtp_id = 35
 def save_cuplikan(dtp_id, link, nama_kena, index1):
-    with open("File/data_koordinat.txt", 'r') as file:
+    with open("data/coordinates.txt", "r", encoding="utf-8") as file:
         file_contents = file.read()
-    koordinat_data = eval("[" + file_contents + "]")
+    koordinat_data = ast.literal_eval("[" + file_contents + "]")
+
+    output_dir = Path(os.getenv("EVIDENCE_OUTPUT_DIR", "outputs/evidence"))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    avi_path = output_dir / f"{dtp_id}.avi"
+    mp4_path = output_dir / f"{dtp_id}.mp4"
 
     cap = cv2.VideoCapture(link)
     frame_width = int(cap.get(3))
     frame_height = int(cap.get(4))
     size = (frame_width, frame_height)
 
-    resultx_raw = cv2.VideoWriter("/Applications/XAMPP/xamppfiles/htdocs/video/" + str(dtp_id)+".avi", cv2.VideoWriter_fourcc(*'MJPG'), 8, size)
+    resultx_raw = cv2.VideoWriter(str(avi_path), cv2.VideoWriter_fourcc(*'MJPG'), 8, size)
 
     x = 0
     xMax = min(len(koordinat_data), int(cap.get(cv2.CAP_PROP_FRAME_COUNT)))  # Ensure xMax is not greater than the number of frames
@@ -35,7 +44,11 @@ def save_cuplikan(dtp_id, link, nama_kena, index1):
     resultx_raw.release()
     cap.release()
 
-    clip = mvp.VideoFileClip("/Applications/XAMPP/xamppfiles/htdocs/video/" + str(dtp_id)+".avi")
-    clip.write_videofile("/Applications/XAMPP/xamppfiles/htdocs/video/" + str(dtp_id)+".mp4")
-    thread1 = threading.Thread(target=analisa_ekspresi_1, args=(dtp_id,link,index1,))
+    clip = mvp.VideoFileClip(str(avi_path))
+    clip.write_videofile(str(mp4_path))
+    clip.close()
+    thread1 = threading.Thread(
+        target=analyze_expressions,
+        args=(dtp_id, link, index1),
+    )
     thread1.start()

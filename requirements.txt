@@ -1,0 +1,14 @@
+deepface
+face-recognition
+filterpy
+lap
+matplotlib
+moviepy<2
+mysql-connector-python
+numpy
+opencv-python
+Pillow
+python-dotenv
+scikit-image
+scipy
+ultralytics
